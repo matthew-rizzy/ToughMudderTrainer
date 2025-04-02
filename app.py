@@ -242,4 +242,4 @@ if __name__ == '__main__':
         with app.app_context():
              init_db()
     # Set host='0.0.0.0' to run on network, remove debug=True for production
-    app.run(debug=True, host='0.0.0.0')h
+    app.run(debug=True, host='0.0.0.0')
