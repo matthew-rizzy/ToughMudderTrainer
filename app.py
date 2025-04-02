@@ -11,7 +11,7 @@ from flask_login import (LoginManager, UserMixin, login_user, logout_user,
 from workout_plan import WORKOUT_PLAN, PRIORITY_ADDONS, NUTRITION_GUIDE
 
 # --- Configuration ---
-DATABASE = 'database.db'
+DATABASE = '/mnt/database/database.db'
 SECRET_KEY = os.urandom(24)
 # SECRET_KEY = 'your_very_secret_and_unguessable_key_here' # Use a fixed key in production
 
