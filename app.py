@@ -108,7 +108,7 @@ def login():
                 # Pass the loaded JSON string during login
                 user_obj = User(id=user_row['id'], username=user_row['username'], custom_weights_json=user_row['custom_weights'])
                 login_user(user_obj)
-                flas('Login successful!', 'success')
+                flash('Login successful!', 'success')
                 # Fetch redirect URL safely
                 next_page = request.args.get('next')
                 return redirect(next_page or url_for('index'))
