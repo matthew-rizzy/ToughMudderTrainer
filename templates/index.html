@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}Workout Plan{% endblock %}
+
+{% block content %}
+  <h1>Tough Mudder Training Plan</h1>
+  <p class="lead">Track your progress below. Checkboxes are saved automatically.</p>
+
+  {% for week in workout_plan %}
+  <div class="card mb-4">
+      <div class="card-header">
+          <h3>Week {{ week.week_num }} ({{ week.dates }})</h3>
+      </div>
+      <div class="card-body">
+          <div class="row">
+              {% for day_name, tasks in week.days.items() %}
+              <div class="col-md-6 col-lg-4 day-card">
+                  <div class="card h-100">
+                      <div class="card-body">
+                          <h4 class="card-title">{{ day_name }}</h4>
+                          {% for task in tasks %}
+                              {% set task_index = loop.index0 %}
+                              {% set checkbox_id = 'week{}-day{}-task{}'.format(week.week_num, day_name.lower().replace(' ', ''), task_index) %}
+                              <div class="task-item">
+                                  {% if task.startswith('**') %}
+                                      {# Don't make titles checkable, just display them #}
+                                      <h5 class="my-2">{{ task.replace('**', '') }}</h5>
+                                  {% elif task.startswith('- ') %}
+                                      {# Indented items are checkable #}
+                                      <input type="checkbox"
+                                             class="form-check-input progress-checkbox"
+                                             id="{{ checkbox_id }}"
+                                             data-checkbox-id="{{ checkbox_id }}"
+                                             {% if checkbox_id in user_progress %}checked{% endif %}>
+                                      <label class="form-check-label" for="{{ checkbox_id }}">{{ task[2:] }}</label> {# Remove '- ' #}
+                                  {% else %}
+                                      {# Regular items are checkable #}
+                                      <input type="checkbox"
+                                             class="form-check-input progress-checkbox"
+                                             id="{{ checkbox_id }}"
+                                             data-checkbox-id="{{ checkbox_id }}"
+                                             {% if checkbox_id in user_progress %}checked{% endif %}>
+                                      <label class="form-check-label" for="{{ checkbox_id }}">{{ task }}</label>
+                                  {% endif %}
+                              </div>
+                          {% endfor %}
+                      </div>
+                  </div>
+              </div>
+              {% endfor %}
+          </div>
+      </div>
+  </div>
+  {% endfor %}
+
+  {# Optional: Display Addons and Nutrition #}
+  <h2>Priority Add-ons</h2>
+  {% for title, items in priority_addons.items() %}
+    <h5>{{ title }}</h5>
+    <ul>
+        {% for item in items %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+  {% endfor %}
+
+  <h2>Nutrition & Supplement Guide</h2>
+    {% for title, items in nutrition_guide.items() %}
+    <h5>{{ title }}</h5>
+    <ul>
+        {% for item in items %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+  {% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Simple script to save checkbox state via fetch API
+  document.querySelectorAll('.progress-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const checkboxId = this.dataset.checkboxId; // Use data attribute
+      const isChecked = this.checked;
+
+      fetch("{{ url_for('update_progress') }}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Include CSRF token if using Flask-WTF CSRF protection
+          // 'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+          checkbox_id: checkboxId,
+          checked: isChecked
+        })
+      })
+      .then(response => response.json())
+     .then(data => {
+        if (data.status !== 'success') {
+          console.error('Failed to save progress:', data.message);
+          // Optional: Add user feedback (e.g., flash message, revert checkbox)
+          alert('Error saving progress. Please try again.');
+          this.checked = !isChecked; // Revert visual state on error
+        } else {
+            console.log('Progress saved for:', checkboxId, 'Checked:', isChecked);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Network error saving progress. Please try again.');
+        this.checked = !isChecked; // Revert visual state on error
+      });
+    });
+  });
+</script>
+{% endblock %} 
