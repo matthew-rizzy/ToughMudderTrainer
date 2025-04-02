@@ -18,47 +18,49 @@
                       <div class="card-body d-flex flex-column"> {# Use flex column for structure #}
                           <h4 class="card-title">{{ day_name }}</h4>
                           <div class="tasks-container mt-2 flex-grow-1"> {# Container for tasks #}
+                              {# --- Main loop through tasks for the day --- #}
                               {% for task in tasks %}
+
                                   {# --- Check if task is a dictionary first --- #}
                                   {% if task is mapping %}
-                                      {# --- Display Task from Dictionary --- #}
+                                      {# --- Display Task from Dictionary (Weighted or Simple Checkable) --- #}
                                       {% set task_index = loop.index0 %}
-                                      {# Use combination of week, day, and task key/index for unique IDs #}
+                                      {# Create unique base ID using week, day, and task's specific key or index #}
                                       {% set task_key_part = task.key if task.key else 'task{}'.format(task_index) %}
                                       {% set base_id = 'week{}-day{}-{}'.format(week.week_num, day_name.lower().replace(' ', ''), task_key_part) %}
-                                      {# Construct unique ID for the checkbox itself #}
+                                      {# Create unique ID specifically for the checkbox state #}
                                       {% set checkbox_id = base_id + '-check' %}
 
                                       <div class="task-item mb-2">
-                                          {# Checkbox (always include) #}
+                                          {# Checkbox - always include for dictionary tasks #}
                                           <div class="form-check d-flex align-items-center">
                                               <input type="checkbox"
                                                      class="form-check-input progress-checkbox me-2"
                                                      id="{{ checkbox_id }}"
-                                                     data-checkbox-id="{{ checkbox_id }}" {# Use this specific ID for saving check state #}
+                                                     data-checkbox-id="{{ checkbox_id }}" {# ID used by JS to save check state #}
                                                      {% if checkbox_id in user_progress %}checked{% endif %}>
 
                                               <label class="form-check-label" for="{{ checkbox_id }}">
-                                                  {# Display exercise name and details from dict #}
+                                                  {# Display exercise name and details from the dictionary #}
                                                   {{ task.exercise }}: {{ task.details }}
                                               </label>
                                           </div>
 
-                                          {# Weight Input (only if type is 'weighted') #}
+                                          {# Weight Input - only displayed if task.type is 'weighted' #}
                                           {% if task.type == 'weighted' %}
-                                              {# Use base_id as the unique key for saving weight associated with this task #}
+                                              {# Use the base_id as the unique key for saving weight associated with this task #}
                                               {% set exercise_key_full = base_id %}
-                                              {# Get weight: Check user's custom weights first, then default #}
+                                              {# Get the current weight: check user's custom weights first, fallback to default #}
                                               {% set current_weight = user_custom_weights.get(exercise_key_full, task.default_weight) %}
                                               <div class="input-group input-group-sm mt-1 ms-4" style="max-width: 180px;"> {# Indent and style weight input #}
                                                   <input type="number"
                                                          class="form-control weight-input"
                                                          value="{{ current_weight if current_weight is not none else '' }}"
                                                          placeholder="Weight"
-                                                        aria-label="Weight for {{ task.exercise }}"
-                                                         step="any" {# Allow decimals #}
+                                                         aria-label="Weight for {{ task.exercise }}"
+                                                         step="any" {# Allow decimal weights #}
                                                          min="0"
-                                                         data-exercise-key="{{ exercise_key_full }}"> {# Key for saving weight #}
+                                                         data-exercise-key="{{ exercise_key_full }}"> {# ID used by JS to save weight state #}
                                                   <span class="input-group-text">{{ task.unit }}</span>
                                               </div>
                                           {% endif %}
@@ -66,20 +68,23 @@
 
                                   {# --- Else, check if task is a string --- #}
                                   {% elif task is string %}
-                                      {# --- Display Simple String Task (Titles, non-checkable items) --- #}
+                                      {# --- Display Simple String Task (Titles, non-checkable notes) --- #}
+                                      {# Check for titles formatted like **Title** #}
                                       {% if task.startswith('**') %}
                                           <h5 class="my-2">{{ task.replace('**', '') }}</h5>
+                                      {# Check for list items formatted like - Item #}
                                       {% elif task.startswith('- ') %}
-                                          {# Simple list items (not checkable with this structure) #}
-                                          <p class="ms-3">{{ task[2:] }}</p> {# Display indented #}
+                                          <p class="ms-3">{{ task[2:] }}</p> {# Display indented, remove '- ' #}
+                                      {# Otherwise, display as regular paragraph #}
                                       {% else %}
-                                          <p>{{ task }}</p> {# Regular string task like notes/rest #}
+                                          <p>{{ task }}</p>
                                       {% endif %}
 
-                                  {# --- Optional: Handle unexpected task types --- #}
+                                  {# --- Optional: Handle any unexpected task formats --- #}
                                   {% else %}
                                        <p class="text-danger">Warning: Unknown task format encountered.</p>
                                   {% endif %}
+
                               {% endfor %} {# End of loop through tasks #}
                           </div> {# End tasks-container #}
                       </div> {# End card-body #}
@@ -91,7 +96,7 @@
   </div> {# End card #}
   {% endfor %} {# End of loop through weeks #}
 
-  {# --- Addons and Nutrition Sections (Unchanged) --- #}
+  {# --- Addons and Nutrition Sections (Display Only) --- #}
   <h2>Priority Add-ons</h2>
   {% for title, items in priority_addons.items() %}
     <h5>{{ title }}</h5>
@@ -115,7 +120,7 @@
   // --- Save Checkbox State ---
   document.querySelectorAll('.progress-checkbox').forEach(checkbox => {
     checkbox.addEventListener('change', function() {
-      const checkboxId = this.dataset.checkboxId; // Use the specific ID for the check state
+      const checkboxId = this.dataset.checkboxId; // Get ID specific to checkbox
       const isChecked = this.checked;
 
       fetch("{{ url_for('update_progress') }}", {
@@ -128,7 +133,7 @@
         if (data.status !== 'success') {
           console.error('Failed to save progress:', data.message);
           alert('Error saving progress. Please try again.');
-          this.checked = !isChecked; // Revert visual state
+          this.checked = !isChecked; // Revert visual state on error
         } else {
           console.log('Progress saved for:', checkboxId, 'Checked:', isChecked);
         }
@@ -136,25 +141,26 @@
       .catch(error => {
         console.error('Error:', error);
         alert('Network error saving progress. Please try again.');
-        this.checked = !isChecked; // Revert visual state
+        this.checked = !isChecked; // Revert visual state on error
       });
     });
   });
 
   // --- Save Weight Input State ---
   document.querySelectorAll('.weight-input').forEach(input => {
-    input.addEventListener('change', function() { // Or 'blur'
-      const exerciseKey = this.dataset.exerciseKey; // Use the key associated with the weight input
-      const newWeight = this.value;
+    // Use 'change' event - fires when value is committed (e.g., blur or Enter)
+    input.addEventListener('change', function() {
+      const exerciseKey = this.dataset.exerciseKey; // Get ID specific to weight input
+      const newWeight = this.value; // Send value as string
 
-      // Basic client-side validation (optional)
+      // Optional: Basic client-side validation
       if (newWeight !== "" && isNaN(parseFloat(newWeight))) {
           alert("Please enter a valid number for the weight.");
-          return;
+          return; // Stop processing if invalid
       }
        if (newWeight !== "" && parseFloat(newWeight) < 0) {
           alert("Weight cannot be negative.");
-          return;
+          return; // Stop processing if invalid
       }
 
       fetch("{{ url_for('update_weight') }}", {
@@ -167,12 +173,12 @@
           if (data.status !== 'success') {
               console.error('Failed to save weight:', data.message);
               alert('Error saving weight: ' + data.message + '. Please try again.');
-              // Consider reverting input value
+              // Consider reverting input value to previous state on error
           } else {
               console.log('Weight saved for:', exerciseKey, 'Value:', newWeight);
-              // Visual feedback
+              // Provide visual feedback on success
               this.classList.add('is-valid');
-              setTimeout(() => { this.classList.remove('is-valid'); }, 1500);
+              setTimeout(() => { this.classList.remove('is-valid'); }, 1500); // Remove feedback after 1.5s
           }
       })
       .catch(error => {
@@ -182,4 +188,4 @@
     });
   });
 </script>
-{% endblock %} {# End of block scripts #} 
+{% endblock %} {# End of block scripts #}
