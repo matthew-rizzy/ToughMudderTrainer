@@ -3,7 +3,7 @@
 
 {% block content %}
   <h1>Tough Mudder Training Plan</h1>
-  <p class="lead">Track your progress below. Checkboxes are saved automatically.</p>
+  <p class="lead">Track your progress below. Checkboxes and weights are saved automatically.</p>
 
   {% for week in workout_plan %}
   <div class="card mb-4">
@@ -15,44 +15,83 @@
               {% for day_name, tasks in week.days.items() %}
               <div class="col-md-6 col-lg-4 day-card">
                   <div class="card h-100">
-                      <div class="card-body">
+                      <div class="card-body d-flex flex-column"> {# Use flex column for structure #}
                           <h4 class="card-title">{{ day_name }}</h4>
-                          {% for task in tasks %}
-                              {% set task_index = loop.index0 %}
-                              {% set checkbox_id = 'week{}-day{}-task{}'.format(week.week_num, day_name.lower().replace(' ', ''), task_index) %}
-                              <div class="task-item">
-                                  {% if task.startswith('**') %}
-                                      {# Don't make titles checkable, just display them #}
-                                      <h5 class="my-2">{{ task.replace('**', '') }}</h5>
-                                  {% elif task.startswith('- ') %}
-                                      {# Indented items are checkable #}
-                                      <input type="checkbox"
-                                             class="form-check-input progress-checkbox"
-                                             id="{{ checkbox_id }}"
-                                             data-checkbox-id="{{ checkbox_id }}"
-                                             {% if checkbox_id in user_progress %}checked{% endif %}>
-                                      <label class="form-check-label" for="{{ checkbox_id }}">{{ task[2:] }}</label> {# Remove '- ' #}
-                                  {% else %}
-                                      {# Regular items are checkable #}
-                                      <input type="checkbox"
-                                             class="form-check-input progress-checkbox"
-                                             id="{{ checkbox_id }}"
-                                             data-checkbox-id="{{ checkbox_id }}"
-                                             {% if checkbox_id in user_progress %}checked{% endif %}>
-                                      <label class="form-check-label" for="{{ checkbox_id }}">{{ task }}</label>
-                                  {% endif %}
-                              </div>
-                          {% endfor %}
-                      </div>
-                  </div>
-              </div>
-              {% endfor %}
-          </div>
-      </div>
-  </div>
-  {% endfor %}
+                          <div class="tasks-container mt-2 flex-grow-1"> {# Container for tasks #}
+                              {% for task in tasks %}
+                                  {# --- Check if task is a dictionary first --- #}
+                                  {% if task is mapping %}
+                                      {# --- Display Task from Dictionary --- #}
+                                      {% set task_index = loop.index0 %}
+                                      {# Use combination of week, day, and task key/index for unique IDs #}
+                                      {% set task_key_part = task.key if task.key else 'task{}'.format(task_index) %}
+                                      {% set base_id = 'week{}-day{}-{}'.format(week.week_num, day_name.lower().replace(' ', ''), task_key_part) %}
+                                      {# Construct unique ID for the checkbox itself #}
+                                      {% set checkbox_id = base_id + '-check' %}
 
-  {# Optional: Display Addons and Nutrition #}
+                                      <div class="task-item mb-2">
+                                          {# Checkbox (always include) #}
+                                          <div class="form-check d-flex align-items-center">
+                                              <input type="checkbox"
+                                                     class="form-check-input progress-checkbox me-2"
+                                                     id="{{ checkbox_id }}"
+                                                     data-checkbox-id="{{ checkbox_id }}" {# Use this specific ID for saving check state #}
+                                                     {% if checkbox_id in user_progress %}checked{% endif %}>
+
+                                              <label class="form-check-label" for="{{ checkbox_id }}">
+                                                  {# Display exercise name and details from dict #}
+                                                  {{ task.exercise }}: {{ task.details }}
+                                              </label>
+                                          </div>
+
+                                          {# Weight Input (only if type is 'weighted') #}
+                                          {% if task.type == 'weighted' %}
+                                              {# Use base_id as the unique key for saving weight associated with this task #}
+                                              {% set exercise_key_full = base_id %}
+                                              {# Get weight: Check user's custom weights first, then default #}
+                                              {% set current_weight = user_custom_weights.get(exercise_key_full, task.default_weight) %}
+                                              <div class="input-group input-group-sm mt-1 ms-4" style="max-width: 180px;"> {# Indent and style weight input #}
+                                                  <input type="number"
+                                                         class="form-control weight-input"
+                                                         value="{{ current_weight if current_weight is not none else '' }}"
+                                                         placeholder="Weight"
+                                                        aria-label="Weight for {{ task.exercise }}"
+                                                         step="any" {# Allow decimals #}
+                                                         min="0"
+                                                         data-exercise-key="{{ exercise_key_full }}"> {# Key for saving weight #}
+                                                  <span class="input-group-text">{{ task.unit }}</span>
+                                              </div>
+                                          {% endif %}
+                                      </div>
+
+                                  {# --- Else, check if task is a string --- #}
+                                  {% elif task is string %}
+                                      {# --- Display Simple String Task (Titles, non-checkable items) --- #}
+                                      {% if task.startswith('**') %}
+                                          <h5 class="my-2">{{ task.replace('**', '') }}</h5>
+                                      {% elif task.startswith('- ') %}
+                                          {# Simple list items (not checkable with this structure) #}
+                                          <p class="ms-3">{{ task[2:] }}</p> {# Display indented #}
+                                      {% else %}
+                                          <p>{{ task }}</p> {# Regular string task like notes/rest #}
+                                      {% endif %}
+
+                                  {# --- Optional: Handle unexpected task types --- #}
+                                  {% else %}
+                                       <p class="text-danger">Warning: Unknown task format encountered.</p>
+                                  {% endif %}
+                              {% endfor %} {# End of loop through tasks #}
+                          </div> {# End tasks-container #}
+                      </div> {# End card-body #}
+                  </div> {# End card #}
+              </div> {# End col #}
+              {% endfor %} {# End of loop through days #}
+          </div> {# End row #}
+      </div> {# End card-body #}
+  </div> {# End card #}
+  {% endfor %} {# End of loop through weeks #}
+
+  {# --- Addons and Nutrition Sections (Unchanged) --- #}
   <h2>Priority Add-ons</h2>
   {% for title, items in priority_addons.items() %}
     <h5>{{ title }}</h5>
@@ -69,44 +108,78 @@
     </ul>
   {% endfor %}
 
-{% endblock %}
+{% endblock %} {# End of block content #}
 
 {% block scripts %}
 <script>
-  // Simple script to save checkbox state via fetch API
+  // --- Save Checkbox State ---
   document.querySelectorAll('.progress-checkbox').forEach(checkbox => {
     checkbox.addEventListener('change', function() {
-      const checkboxId = this.dataset.checkboxId; // Use data attribute
+      const checkboxId = this.dataset.checkboxId; // Use the specific ID for the check state
       const isChecked = this.checked;
 
       fetch("{{ url_for('update_progress') }}", {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Include CSRF token if using Flask-WTF CSRF protection
-        },
-        body: JSON.stringify({
-          checkbox_id: checkboxId,
-          checked: isChecked
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checkbox_id: checkboxId, checked: isChecked }) // Send checkbox_id
       })
       .then(response => response.json())
-     .then(data => {
+      .then(data => {
         if (data.status !== 'success') {
           console.error('Failed to save progress:', data.message);
-          // Optional: Add user feedback (e.g., flash message, revert checkbox)
           alert('Error saving progress. Please try again.');
-          this.checked = !isChecked; // Revert visual state on error
+          this.checked = !isChecked; // Revert visual state
         } else {
-            console.log('Progress saved for:', checkboxId, 'Checked:', isChecked);
+          console.log('Progress saved for:', checkboxId, 'Checked:', isChecked);
         }
       })
       .catch(error => {
         console.error('Error:', error);
         alert('Network error saving progress. Please try again.');
-        this.checked = !isChecked; // Revert visual state on error
+        this.checked = !isChecked; // Revert visual state
+      });
+    });
+  });
+
+  // --- Save Weight Input State ---
+  document.querySelectorAll('.weight-input').forEach(input => {
+    input.addEventListener('change', function() { // Or 'blur'
+      const exerciseKey = this.dataset.exerciseKey; // Use the key associated with the weight input
+      const newWeight = this.value;
+
+      // Basic client-side validation (optional)
+      if (newWeight !== "" && isNaN(parseFloat(newWeight))) {
+          alert("Please enter a valid number for the weight.");
+          return;
+      }
+       if (newWeight !== "" && parseFloat(newWeight) < 0) {
+          alert("Weight cannot be negative.");
+          return;
+      }
+
+      fetch("{{ url_for('update_weight') }}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ exercise_key: exerciseKey, weight: newWeight }) // Send exercise_key
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.status !== 'success') {
+              console.error('Failed to save weight:', data.message);
+              alert('Error saving weight: ' + data.message + '. Please try again.');
+              // Consider reverting input value
+          } else {
+              console.log('Weight saved for:', exerciseKey, 'Value:', newWeight);
+              // Visual feedback
+              this.classList.add('is-valid');
+              setTimeout(() => { this.classList.remove('is-valid'); }, 1500);
+          }
+      })
+      .catch(error => {
+          console.error('Error:', error);
+          alert('Network error saving weight. Please try again.');
       });
     });
   });
 </script>
-{% endblock %} 
+{% endblock %} {# End of block scripts #} 
