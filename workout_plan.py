@@ -323,7 +323,7 @@ WORKOUT_PLAN = [
                 {"type": "weighted", "key": "frontsquat", "exercise": "Front Squat", "details": "3x8", "default_weight": 169, "unit": "lbs"}, # Updated
                 {"type": "weighted", "key": "dbthruster", "exercise": "DB Thrusters", "details": "3x12", "default_weight": 55, "unit": "lb dumbbells"}, # Updated
                 {"type": "simple", "key": "sledpush", "exercise": "Sled Push", "details": "2x20 yds (heavy)"},
-                {"type": "weighted", "key": "farmercarry", "exercise": "Farmer's Carry", "details": "2x40 yds", "default_weight": 100, "unit": "lbs/hand"}, # Updated
+                {"type": "weighted", "key": "farmercarry", "exercise": "Farmer's Carry", "details": "3x40 yds", "default_weight": 100, "unit": "lbs/hand"}, # Updated
                 {"type": "simple", "key": "boxjump", "exercise": "Box Jumps", "details": "3x8 (24–30” box)"},
                 {"type": "simple", "key": "battleropes", "exercise": "Battle Ropes Tabata", "details": "4 rounds (20s on / 10s off)"},
                 "**Core Finisher:**",
